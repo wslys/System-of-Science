@@ -1,0 +1,105 @@
+团队临时表：
+
+CREATE TEMPORARY TABLE team SELECT * FROM (
+SELECT t.list, t.level, t.userId, u.truename
+FROM (
+    SELECT 6 AS userId, 0 as level, 1 as list
+UNION
+    SELECT hconnect(id) AS userId, @level as level, (@list := @list + 1) as list
+    FROM (SELECT @start_with := 6, @id := @start_with, @level := 0, @list := 1 )
+    vars, user WHERE @id IS NOT NULL
+) t
+INNER JOIN user u ON t.userId = u.id
+) tt
+
+
+
+
+
+
+SELECT payTime, DATE_FORMAT(IF(DAY(payTime) > 10, DATE_ADD(payTime, INTERVAL 1 MONTH), payTime), '%Y-%m-11') as startDate FROM orders
+
+
+订单生效
+
+订单创建时，先计算预计生效时间 startTime
+
+1. 生效时间还没到：startTime > NOW()
+    状态 = 待生效
+
+    每日自动脚本判断，如已到 startDate 则生效，周期为 1，可提货
+    state = 4, curCycles = 1, takeState = 1
+
+2. 生效时间已过
+
+   计算周期数 = (当前时间 - 生效时间) / 7 + 1
+
+   (1) 如果周期数 < 49，表示周期中
+        状态 = 周期中，startTime = startDate
+        state = 5, curCycles = <周期数>, takeState = 1
+
+   (2) 如果周期数 > 48，表示已完成
+        状态 = 已完成, startTime = startDate
+        state = 6, curCycles = 49, takeState = <已过期>
+
+
+
+x
+指定时间
+
+1. 在当前周期中的报单数
+
+SELECT masterUser as userId, SUM(sheetCount) as startSheets
+FROM orders
+WHERE DATEDIFF('2015-10-07', payTime) > 0 and DATEDIFF('2015-10-07', payTime) < 48 * 7
+GROUP BY masterUser
+
+2. 倒推7天内新报单积分的报单数
+SELECT userId, SUM(newSheets) as newSheets FROM
+(
+	SELECT masterUser as userId, (sheetCount - 1) as newSheets
+	FROM orders
+	WHERE DATEDIFF('2015-10-07', payTime) > 0 and DATEDIFF('2015-10-07', payTime) < 8
+UNION ALL
+	SELECT createUser as userId, (1) as newSheets
+	FROM orders
+	WHERE DATEDIFF('2015-10-07', payTime) > 0 and DATEDIFF('2015-10-07', payTime) < 8
+) a GROUP BY userId
+
+3.报单总数
+
+SELECT masterUser as userId, SUM(sheetCount) as totalSheets
+FROM orders WHERE state != 2 GROUP BY masterUser
+
+
+
+
+
+SELECT u.id, u.username, u.truename, ss.startSheets, ns.newSheets, ts.totalSheets
+FROM User u
+LEFT JOIN
+(
+SELECT masterUser as userId, SUM(sheetCount) as startSheets
+FROM orders
+WHERE DATEDIFF('2015-10-07', payTime) > 0 and DATEDIFF('2015-10-07', payTime) < 48 * 7
+GROUP BY masterUser
+) ss ON u.id = ss.userId
+LEFT JOIN
+(
+SELECT userId, SUM(newSheets) as newSheets FROM
+(
+	SELECT masterUser as userId, (sheetCount - 1) as newSheets
+	FROM orders
+	WHERE DATEDIFF('2015-10-07', payTime) > 0 and DATEDIFF('2015-10-07', payTime) < 8
+UNION ALL
+	SELECT createUser as userId, (1) as newSheets
+	FROM orders
+	WHERE DATEDIFF('2015-10-07', payTime) > 0 and DATEDIFF('2015-10-07', payTime) < 8
+) a GROUP BY userId
+) ns ON u.id = ns.userId
+LEFT JOIN
+(
+SELECT masterUser as userId, SUM(sheetCount) as totalSheets
+FROM orders WHERE state != 2 GROUP BY masterUser
+) ts ON u.id = ts.userId
+WHERE u.role > 5 and u.state = 1

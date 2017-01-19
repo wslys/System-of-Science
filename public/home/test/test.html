@@ -1,0 +1,24 @@
+<div id="content" ng-controller="TestCtrl as vm">
+    <div id="content-header">
+        <div id="breadcrumb"> <a href="#" title="Go to Home" class="tip-bottom"><i class="icon-home"></i> Home</a> <a href="#">Addons pages</a> <a href="#" class="current">{{ app.title }}</a> </div>
+        <h1>Invoice</h1>
+    </div>
+    <div class="container-fluid"><hr>
+
+    <pre>
+    {{vm.treeConfig}}
+    {{vm.treeData}}
+    {{vm.treeInstance}}
+    {{vm.treeEvents}}
+    </pre>
+
+        <!--<div class="tree-container">-->
+            <!--<div js-tree="vm.treeConfig"-->
+                 <!--should-apply="vm.applyModelChanges()"-->
+                 <!--ng-model="vm.treeData"-->
+                 <!--tree="vm.treeInstance"-->
+                 <!--tree-events-obj="vm.treeEvents"></div>-->
+        <!--</div>-->
+    </div>
+</div>
+
